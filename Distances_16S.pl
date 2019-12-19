@@ -14,8 +14,8 @@ my @distances=undef;
 my $path=$ARGV[0];
 
 open(arch,$path."results.txt")|| die; #We open the results file from tree to get get the info of all leaves in each node.
-open(salida,">".$path."results_stats.txt"); #The output file is called this way
-print salida "Node"."\t"."Leaves"."\t"."Mean"."\t"."Desv"."\t"."Max"."\n";
+open(output_file,">".$path."results_stats.txt"); #The output file is called this way
+print output_file "Node"."\t"."Leaves"."\t"."Mean"."\t"."Desv"."\t"."Max"."\n";
 
 while(<arch>)
 {
@@ -62,7 +62,7 @@ while(<arch>)
 		my $mean = Math::NumberCruncher::Mean(\@distances);
 		my $sd = Math::NumberCruncher::StandardDeviation(\@distances);
 
-		print salida $node."\t".scalar(@list_leaves)."\t".$mean."\t".$sd."\t".$max."\n"; #Finally we print the info for each node
+		print output_file $node."\t".scalar(@list_leaves)."\t".$mean."\t".$sd."\t".$max."\n"; #Finally we print the info for each node
 		
 		$band=1;
 		@distances=undef;
@@ -70,9 +70,9 @@ while(<arch>)
 				
 	}elsif($node ne "Core")
 	{
-		print salida $node."\t".scalar(@list_leaves)."\t"."0"."\t"."0"."\t"."0"."\n"; #If a core is a leaf not a core, the result is 0 for all the variables
+		print output_file $node."\t".scalar(@list_leaves)."\t"."0"."\t"."0"."\t"."0"."\n"; #If a core is a leaf not a core, the result is 0 for all the variables
 	}
 }
 
-close(salida);
+close(output_file);
 system("rm -rf ".$path."otus_test_file.fasta ".$path."otus_test_file.filter ".$path."otus_test_file.filter.dist ".$path."otus_test_file.filter.fasta");
