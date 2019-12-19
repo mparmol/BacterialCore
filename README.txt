@@ -8,7 +8,7 @@
 
 ##The installation of Python2.7 (https://www.python.org/downloads/), Qiime (http://qiime.org/) and Prinseq (http://prinseq.sourceforge.net/) is mandatory.
 
-##The files needed are the 16S sequences to be analyzed in multifasta format and the a 16S phylogenetic tree and reference sequences (here 97_otus_nodes.tree and 97_otus.fasta from Greengenes gg_13_5). These file should be in the same folder where the script is executed.
+##The files needed are the 16S sequences to be analyzed in multifasta format and the a 16S phylogenetic tree and reference sequences (here 97_otus_nodes.tree and 97_otus.fasta from Greengenes gg_13_5 https://greengenes.secondgenome.com/?prefix=downloads/greengenes_database/gg_13_5/). These file should be in the same folder where the script is executed.
 
 ##Three additional R scripts are need to 1)Calculate the statistics for the OTUs picking part (OTUs_statistics.R), 2) Calculate a Venn diagram between the reads belonging to core OTUs/nodes from both methods (Venn_OTUS_Tree.R), 3) calculate intra-node average 16S distances (Distances_16S.pl).
 
