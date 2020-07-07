@@ -1,5 +1,6 @@
 #### READ ME #### 
 
+
 ######R code for: "Detection of phylogenetic core groups in diverse microbial ecosystems" Parras-Moltó & Aguirre de Cárcer, 2019. #######
 
 ##This document describes the use of BacterialCore.py
@@ -8,15 +9,19 @@
 
 ##The installation of Python2.7 (https://www.python.org/downloads/), Qiime (http://qiime.org/) and Prinseq (http://prinseq.sourceforge.net/) is mandatory.
 
-##The files needed are the 16S sequences to be analyzed in multifasta format and the a 16S phylogenetic tree and reference sequences (here 97_otus_nodes.tree and 97_otus.fasta from Greengenes gg_13_5 https://greengenes.secondgenome.com/?prefix=downloads/greengenes_database/gg_13_5/). These file should be in the same folder where the script is executed.
+##The files needed are the 16S sequences to be analyzed in multifasta format and the 16S phylogenetic tree and aligned reference sequences (here 97_otus_nodes.tree/99_otus_nodes.tree and 97_otus.fasta/99_otus.fasta from Greengenes gg_13_5 https://greengenes.secondgenome.com/?prefix=downloads/greengenes_database/gg_13_5/). These file should be in the same folder where the script is executed.
+
+##The tree file and aligned reference sequences file need to be the same version as the one loaded by pick_outs.py
+
+##The node names of the trees should be modified, and a genuine name should be given for all. This could be done for example using R with the function "makeNodeLabel" from "ape" package. 
 
 ##Three additional R scripts are need to 1)Calculate the statistics for the OTUs picking part (OTUs_statistics.R), 2) Calculate a Venn diagram between the reads belonging to core OTUs/nodes from both methods (Venn_OTUS_Tree.R), 3) calculate intra-node average 16S distances (Distances_16S.pl).
-
-##(RECOMENDED!)The datasets must be rarefied to the minimun read depth in the dataset, after removing low quality reads.
+#for reported nodes, leave information (names, average distance,...) relates only to leaves detected during analysis for that node, not all leaves in that node in the original tree.
+##The datasets should be rarefied to the minimun read depth in the dataset, after removing low quality reads.
 
 ##The parameters that we can modify are:
 
-· Input file; -file
+· Input file; -f file
 · Output file; -o
 · Process; -p #There are 4 different processes that can be executed:
 	1: Complete pipeline; Detection of non-overlapping OTUs present in 100% of the samples, followed by the detection of nodes in the phylogenetic tree present in 100% of the samples. Finally this script will perform a Venn diagram to look for the shared core reads that exists between the OTUs and Tree approaches.
@@ -27,6 +32,10 @@
 · Initial clustering threshold with pick_otus; -initial_level #This is the first clustering threshold that will be permorfed by pick_otus (default 0.97).
 
 · Last clustering threshold with pick_otus; -final_level #This is the last clustering threshold that will be evaluated.
+
+· Minimun percetage of samples to declare a core; -min_core_percentage #This value can be modified if we decided that a core is not necessary present in all the samples (default 1).
+
+· Tree clustering level;-tree_level #Reference tree to be used for pick_otus analysis in the tree study (default 97). 
 
 · Tree type analysis; -tree_type_analysis #Core detection can be evaluated using three different methods and a last option to only see the abundance of each leaf and node [default 1]. 
 	1: All samples must have at least one read mapping to the leaf or node.
@@ -52,3 +61,4 @@ Arbol (folder):
 	results_stats.txt: Number of leaves, mean 16S distance between leaves, estandard deviation of 16S distances between leaves, and max 16S distance between leaves, for each node and leaf core.
 
 Reads_cores_Tree_ALL_OTUs_reads_core_ALL_.png #Image representing the Venn diagram.
+
