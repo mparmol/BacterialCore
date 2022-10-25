@@ -1,4 +1,4 @@
-from ete3 import Tree #ete3 is a library needed to transverse a tree object
+rom ete3 import Tree #ete3 is a library needed to transverse a tree object
 import numpy as np
 from scipy import stats
 import argparse
@@ -11,12 +11,17 @@ def main():
 	parser = argparse.ArgumentParser(description="")
 
         #--Input/output files
+	# Must use absolute paths
 	parser.add_argument('-f', dest = 'file', type = str, default = './', required = True, help = "Reads .fasta file") #Fasta file with all the sequences from all subjects of a certain condition
 	parser.add_argument('-o', dest = 'output', type = str, default = './', required = True, help = "Output file") #Folder name where output files are going to be located
-	parser.add_argument('-p', dest = 'process', type = int, required = True, choices=(1, 2, 3, 4), help = "1-Complete process, OTUs and Tree. 2- OTUS. 3- Tree. 4- Venn comparation: ") #Choice which process do you want to be executed
+	parser.add_argument('-p', dest = 'process', type = int, required = True, help = "1-Complete process, OTUs and Tree. 2- OTUS. 3- Tree. 4- Venn comparation: ") #Choice which process do you want to be executed
 	parser.add_argument('-initial_level', dest = 'ilvl', type = float, default = 0.97, choices=[Range(0.5, 1.0)], required = False, help = "First aggregation level to measure") #Initial identity level to use in pick_otus
 	parser.add_argument('-final_level', dest = 'flvl', type = float, default = 0.74, choices=[Range(0.5, 1.0)], required = False, help = "Last aggregation level to measure") #Las identity level to use in pick_otus
 	parser.add_argument('-tree_type_analysis', dest = 'analtype', type = int, default = 1, required = False, choices=[1,2,3,4], help = "'1: Core 100. 2: Binomial. 3: Min Percentage. 4: Print all nodes'") #Way to evaluate core levels while trasversing the 97_nodes tree
+	parser.add_argument('-tree_level', dest = 'tree_l', type = int, default = 97, required = False, choices=(97, 99), help = "97: 97_otus_nodes.tree, 99: 99_otus_nodes.tree. Default: 97") #Choice which level
+	parser.add_argument('-min_core_percentage', dest = 'min_core', type = float, default = 1, required = False, choices=[Range(0.5, 1.0)], help = "Minimun percetage of samples to describe a core") #Here we can change the "1" (100%) value for another percentage
+	parser.add_argument('-threads', dest = 'threads', type = int, default = 1, required = False, help = "For paralellization of all parallelizable steps")
+	
 	args = parser.parse_args()
   ##########################################################################################
 
@@ -26,36 +31,46 @@ def main():
 	last_var=init_var
 	final_lim=args.flvl
 	output = args.output
+	tree_l = args.tree_l
+	if tree_l==97:
+		tree_l_name="97_otus_nodes.tree"
+		init_var_tree=0.97
+	elif tree_l==99:
+		tree_l_name="99_otus_nodes.tree"
+		init_var_tree=0.99
+	compute_core=args.min_core
+	threads = str(args.threads)
 	
-	file_no_fa=str(args.file.split(".")[0])+"_otus.txt" #Create a variable that has the variable name summed to the sufix _otus.txt, to permit pick_rep_set finde the file generated from pick_otus
+	file_no_fa=os.path.basename(str(args.file.split(".")[0]))+"_otus.txt" #Create a variable that has the variable name summed to the sufix _otus.txt, to permit pick_rep_set finde the file generated from pick_otus
 
 	if args.process==1 or  args.process==2: #The denovo OTUs picking will be performed if we choose the complete analysis (1) or only the OTU picking (2)
-		os.system("pick_otus.py -i "+str(args.file)+" -o "+str(output)+"/OTUs/"+str(init_var)+"/ -m usearch61 -z -s "+str(init_var)) #Denovo OTUs picking at the initial identity level, using usearch61. This version is necessary for large datasets, but could be changed for usearch (32 bits version) for smaller ones
+		os.system("pick_otus.py -i "+str(args.file)+" -o "+str(output)+"/OTUs/"+str(init_var)+"/ -m usearch61 -z -s "+str(init_var)+" --threads "+threads) #Denovo OTUs picking at the initial identity level, using usearch61. This version is necessary for large datasets, but could be changed for usearch (32 bits version) for smaller ones
 		os.system("pick_rep_set.py -i "+str(output)+"/OTUs/"+str(init_var)+"/"+str(file_no_fa)+" -f "+str(args.file)+" -o "+str(output)+"/OTUs/"+str(init_var)+"/rep_set.fasta") #At this point a representative sequence is choosen within each OTU, with default parameters
-		os.system("prinseq-lite.pl -fasta "+str(output)+"/OTUs/"+str(init_var)+"/rep_set.fasta -out_format 1 -out_good "+str(output)+"/OTUs/"+str(init_var)+"/rep_set_"+str(init_var)+".good") #We need prinseq in order to chage the format of the multifasta, to avoid sequence import problems with the next steps
-		os.system("assign_taxonomy.py -i "+str(output)+"/OTUs/"+str(init_var)+"/rep_set_"+str(init_var)+".good.fasta -o "+str(output)+"/OTUs/"+str(init_var)+"/rep_set.good."+str(init_var)+".assignedTax -m rdp") #Here we assign taxonomy to each OTU using rdp classifier, with default parameters
+		os.system("./prinseq-lite.pl -fasta "+str(output)+"/OTUs/"+str(init_var)+"/rep_set.fasta -out_format 1 -out_good "+str(output)+"/OTUs/"+str(init_var)+"/rep_set_"+str(init_var)+".good") #We need prinseq in order to chage the format of the multifasta, to avoid sequence import problems with the next steps
+#		os.system("assign_taxonomy.py -i "+str(output)+"/OTUs/"+str(init_var)+"/rep_set_"+str(init_var)+".good.fasta -o "+str(output)+"/OTUs/"+str(init_var)+"/rep_set.good."+str(init_var)+".assignedTax -m rdp") #Here we assign taxonomy to each OTU using rdp classifier, with default parameters
+		os.system("parallel_assign_taxonomy_rdp.py -i "+str(output)+"/OTUs/"+str(init_var)+"/rep_set_"+str(init_var)+".good.fasta -o "+str(output)+"/OTUs/"+str(init_var)+"/rep_set.good."+str(init_var)+".assignedTax --jobs_to_start "+threads) # HAS TO BE AN ABSOLUTE PATH
 		os.system("make_otu_table.py -i "+str(output)+"/OTUs/"+str(init_var)+"/"+str(file_no_fa)+" -t "+str(output)+"/OTUs/"+str(init_var)+"/rep_set.good."+str(init_var)+".assignedTax/rep_set_"+str(init_var)+".good_tax_assignments.txt -o "+str(output)+"/OTUs/"+str(init_var)+"/All_table_"+str(init_var)+".biom") #Using the taxonomy and representative OTUs file, we create here an OTU table
 		os.system("biom convert -i "+str(output)+"/OTUs/"+str(init_var)+"/All_table_"+str(init_var)+".biom -o "+str(output)+"/OTUs/"+str(init_var)+"/table.from_biom_"+str(init_var)+".txt --to-tsv --header-key taxonomy") #This is an extra step to generate an OTU table as .txt, in case we need it for other to check the results at this point
-		os.system("compute_core_microbiome.py -i "+str(output)+"/OTUs/"+str(init_var)+"/All_table_"+str(init_var)+".biom -o "+str(output)+"/OTUs/"+str(init_var)+"/All_table_normKO_core100 --min_fraction_for_core 1") #Here we compute the core microbiome at 100% samples level. Here we can change the "1" (100%) value for another percentage
-		os.system("biom convert -i "+str(output)+"/OTUs/"+str(init_var)+"/All_table_normKO_core100/core_table_100.biom -o "+str(output)+"/OTUs/"+str(init_var)+"/All_table_normKO_core100/"+str(init_var)+".biom --to-json") #In this and the next step we convert the biom files to json format, needed for further analysis
+		os.system("compute_core_microbiome.py -i "+str(output)+"/OTUs/"+str(init_var)+"/All_table_"+str(init_var)+".biom -o "+str(output)+"/OTUs/"+str(init_var)+"/All_table_normKO_core"+str(int(compute_core*100))+" --min_fraction_for_core "+str(compute_core)+" --max_fraction_for_core "+str(compute_core)) #Here we compute the core microbiome
+		os.system("biom convert -i "+str(output)+"/OTUs/"+str(init_var)+"/All_table_normKO_core"+str(int(compute_core*100))+"/core_table_"+str(int(compute_core*100))+".biom -o "+str(output)+"/OTUs/"+str(init_var)+"/All_table_normKO_core"+str(int(compute_core*100))+"/"+str(init_var)+".biom --to-json") #In this and the next step we convert the biom files to json format, needed for further analysis
 		os.system("biom convert -i "+str(output)+"/OTUs/"+str(init_var)+"/All_table_"+str(init_var)+".biom -o "+str(output)+"/OTUs/"+str(init_var)+"/All_table_json_"+str(init_var)+".biom --to-json")
-		
-		if(os.path.exists(str(output)+"/OTUs/"+str(init_var)+"/All_table_normKO_core100/"+str(init_var)+".biom")): #With this if loop we modify some strings in the biom table to help the visualization of the results once the statistics are done
-			os.system("cp "+str(output)+"/OTUs/"+str(init_var)+"/All_table_normKO_core100/"+str(init_var)+".biom "+str(output)+"/OTUs/"+str(init_var)+"/All_table_normKO_core100/"+str(init_var)+"._changed_name.biom")
-			for line in fileinput.input(str(output)+"/OTUs/"+str(init_var)+"/All_table_normKO_core100/"+str(init_var)+"._changed_name.biom", inplace=True):
+
+		if(os.path.exists(str(output)+"/OTUs/"+str(init_var)+"/All_table_normKO_core"+str(int(compute_core*100))+"/"+str(init_var)+".biom")): #With this if loop we modify some strings in the biom table to help the visualization of the results once the statistics are done
+			os.system("cp "+str(output)+"/OTUs/"+str(init_var)+"/All_table_normKO_core"+str(int(compute_core*100))+"/"+str(init_var)+".biom "+str(output)+"/OTUs/"+str(init_var)+"/All_table_normKO_core"+str(int(compute_core*100))+"/"+str(init_var)+"._changed_name.biom")
+			for line in fileinput.input(str(output)+"/OTUs/"+str(init_var)+"/All_table_normKO_core"+str(int(compute_core*100))+"/"+str(init_var)+"._changed_name.biom", inplace=True):
 				print (line.replace("]}},{\"id\": \"", "]}},{\"id\": \"Core "+str(init_var)+" "))
-			for line in fileinput.input(str(output)+"/OTUs/"+str(init_var)+"/All_table_normKO_core100/"+str(init_var)+"._changed_name.biom", inplace=True):
+			for line in fileinput.input(str(output)+"/OTUs/"+str(init_var)+"/All_table_normKO_core"+str(int(compute_core*100))+"/"+str(init_var)+"._changed_name.biom", inplace=True):
 				print (line.replace("\"rows\": [{\"id\": \"","\"rows\": [{\"id\": \"Core "+str(init_var)+" "))
 
 		os.system("mv "+str(output)+"/OTUs/"+str(init_var)+"/"+str(file_no_fa)+" "+str(output)+"/OTUs/"+str(init_var)+"/rep_set_"+str(init_var)+".good_otus.txt") #Here we modified the name of the first otus_file in order to generate and standerd name that the loop could understand in the next levels
-		par_a=str(output)+"/OTUs/"+str(init_var)+"/All_table_normKO_core100/core_otus_100.txt"
+		par_a=str(output)+"/OTUs/"+str(init_var)+"/All_table_normKO_core"+str(int(compute_core*100))+"/core_otus_"+str(int(compute_core*100))+".txt"
 		par_b=str(output)+"/OTUs/"+str(init_var)+"/rep_set_"+str(init_var)+".good_otus.txt"
 		par_c=str(output)+"/OTUs/filtrar"+str(init_var)+".txt"
 		CoreFilt_a(par_a,par_b,par_c) #With this module we can extract the reads that are part of the core at this level
 		
-		output_file=open("./"+str(output)+"/OTUs/"+str(init_var)+"/rep_set_"+str(init_var)+".good_otus.txt.modified.txt", 'w') #This line modifies the \t with ; in the OTUs file, needed to perform the next statisticals analysis with R.  
+		output_file=open(str(output)+"/OTUs/"+str(init_var)+"/rep_set_"+str(init_var)+".good_otus.txt.modified.txt", 'w') #This line modifies the \t with ; in the OTUs file, needed to perform the next statisticals analysis with R.  
 
-		for line in open("./"+str(output)+"/OTUs/"+str(init_var)+"/rep_set_"+str(init_var)+".good_otus.txt", 'r'):  #With this loop we write the last file
+		for line in open(str(output)+"/OTUs/"+str(init_var)+"/rep_set_"+str(init_var)+".good_otus.txt", 'r'):  #With this loop we write the last file
 			line = line.rstrip()
 			line_info=line.split('\t')
 			output_file.write(str(line_info[0])+'\t')
@@ -69,7 +84,7 @@ def main():
 			os.system("merge_otu_maps.py -i "+str(output)+"/OTUs/"+str(last_var)+"/rep_set_"+str(last_var)+".good_otus.txt,"+str(output)+"/OTUs/"+str(x)+"/rep_set_"+str(last_var)+".good_otus.txt -o "+str(output)+"/OTUs/"+str(x)+"/otus"+str(x)+".txt")
 			os.system("mv "+str(output)+"/OTUs/"+str(x)+"/otus"+str(x)+".txt "+str(output)+"/OTUs/"+str(x)+"/rep_set_"+str(x)+".good_otus.txt")
 			os.system("pick_rep_set.py -i "+str(output)+"/OTUs/"+str(x)+"/rep_set_"+str(x)+".good_otus.txt -f "+str(args.file)+" -o "+str(output)+"/OTUs/"+str(x)+"/rep_set.fasta")
-			os.system("prinseq-lite.pl -fasta "+str(output)+"/OTUs/"+str(x)+"/rep_set.fasta -out_format 1 -out_good "+str(output)+"/OTUs/"+str(x)+"/rep_set_"+str(x)+".good")
+			os.system("./prinseq-lite.pl -fasta "+str(output)+"/OTUs/"+str(x)+"/rep_set.fasta -out_format 1 -out_good "+str(output)+"/OTUs/"+str(x)+"/rep_set_"+str(x)+".good")
 			os.system("assign_taxonomy.py -i "+str(output)+"/OTUs/"+str(x)+"/rep_set_"+str(x)+".good.fasta -o "+str(output)+"/OTUs/"+str(x)+"/rep_set.good."+str(x)+".assignedTax -m rdp")
 			os.system("make_otu_table.py -i "+str(output)+"/OTUs/"+str(x)+"/rep_set_"+str(x)+".good_otus.txt -t "+str(output)+"/OTUs/"+str(x)+"/rep_set.good."+str(x)+".assignedTax/rep_set_"+str(x)+".good_tax_assignments.txt -o "+str(output)+"/OTUs/"+str(x)+"/All_table_"+str(x)+".biom")
 			os.system("biom convert -i "+str(output)+"/OTUs/"+str(x)+"/All_table_"+str(x)+".biom -o "+str(output)+"/OTUs/"+str(x)+"/table.from_biom_"+str(x)+".txt --to-tsv --header-key taxonomy")
@@ -82,8 +97,8 @@ def main():
 			par_c=str(output)+"/OTUs/"+str(x)+"/otus"+str(x)+".Filt.txt"
 			CoreFilt_b(par_a,par_b,par_c) #Here we ommit reads that already have been part of a core
 			os.system("make_otu_table.py -i "+str(output)+"/OTUs/"+str(x)+"/otus"+str(x)+".Filt.txt -t "+str(output)+"/OTUs/"+str(x)+"/rep_set.good."+str(x)+".assignedTax/rep_set_"+str(x)+".good_tax_assignments.txt -o "+str(output)+"/OTUs/"+str(x)+"/"+str(x)+".Filt_table.biom")
-			os.system("compute_core_microbiome.py -i "+str(output)+"/OTUs/"+str(x)+"/"+str(x)+".Filt_table.biom -o "+str(output)+"/OTUs/"+str(x)+"/coreFilt."+str(x)+" --min_fraction_for_core 1")
-			os.system("biom convert -i "+str(output)+"/OTUs/"+str(x)+"/coreFilt."+str(x)+"/core_table_100.biom -o "+str(output)+"/OTUs/"+str(x)+"/coreFilt."+str(x)+"/"+str(x)+".biom --to-json")
+			os.system("compute_core_microbiome.py -i "+str(output)+"/OTUs/"+str(x)+"/"+str(x)+".Filt_table.biom -o "+str(output)+"/OTUs/"+str(x)+"/coreFilt."+str(x)+" --num_fraction_for_core_steps 2 --min_fraction_for_core "+str(compute_core)+" --max_fraction_for_core "+str(compute_core))
+			os.system("biom convert -i "+str(output)+"/OTUs/"+str(x)+"/coreFilt."+str(x)+"/core_table_"+str(int(compute_core*100))+".biom -o "+str(output)+"/OTUs/"+str(x)+"/coreFilt."+str(x)+"/"+str(x)+".biom --to-json")
 			os.system("biom convert -i "+str(output)+"/OTUs/"+str(x)+"/All_table_"+str(x)+".biom -o "+str(output)+"/OTUs/"+str(x)+"/All_table_json_"+str(x)+".biom --to-json")
 			
 			if(os.path.exists(str(output)+"/OTUs/"+str(x)+"/coreFilt."+str(x)+"/"+str(x)+".biom")):
@@ -93,14 +108,14 @@ def main():
 				for line in fileinput.input(str(output)+"/OTUs/"+str(x)+"/coreFilt."+str(x)+"/"+str(x)+"._changed_name.biom", inplace=True):
 					print (line.replace("\"rows\": [{\"id\": \"","\"rows\": [{\"id\": \"Core "+str(x)+" "))
 			
-			par_a=str(output)+"/OTUs/"+str(x)+"/coreFilt."+str(x)+"/core_otus_100.txt"
+			par_a=str(output)+"/OTUs/"+str(x)+"/coreFilt."+str(x)+"/core_otus_"+str(int(compute_core*100))+".txt"
 			par_b=str(output)+"/OTUs/"+str(x)+"/rep_set_"+str(x)+".good_otus.txt"
 			par_c=str(output)+"/OTUs/filtrar"+str(x)+".txt"
 			CoreFilt_a(par_a,par_b,par_c)
 
-			output_file=open("./"+str(output)+"/OTUs/"+str(x)+"/rep_set_"+str(x)+".good_otus.txt.modified.txt", 'w')
+			output_file=open(str(output)+"/OTUs/"+str(x)+"/rep_set_"+str(x)+".good_otus.txt.modified.txt", 'w')
 
-			for line in open("./"+str(output)+"/OTUs/"+str(x)+"/rep_set_"+str(x)+".good_otus.txt", 'r'):
+			for line in open(str(output)+"/OTUs/"+str(x)+"/rep_set_"+str(x)+".good_otus.txt", 'r'):
 				line = line.rstrip()
 				line_info=line.split('\t')
 				output_file.write(str(line_info[0])+'\t')
@@ -111,37 +126,47 @@ def main():
 
 		os.system("cat "+str(output)+"/OTUs/filtrar*.txt > "+str(output)+"/OTUs/filt.txt") #Core reads filtered after each evaluated levels are concatenated into a single file
 		os.system("rm -rf "+str(output)+"/OTUs/filtrar*.txt")
+		os.system("Rscript --vanilla OTUs_statistics.R "+str(output)+"/OTUs/ "+str(init_var)) #Finally, the R script "OTUs_statistics" perform the statistical analysis of the cores obtained within all levels
+		print("pick_otus.py -i "+str(args.file)+" -o "+str(output)+"/Tree/"+str(init_var_tree)+"/ -m usearch61_ref -C -z -s "+str(init_var_tree)) #OTUs picking at the initial identity level, using u$
+		print("pick_rep_set.py -i "+str(output)+"/Tree/"+str(init_var_tree)+"/"+str(file_no_fa)+" -f "+str(args.file)+" -o "+str(output)+"/Tree/"+str(init_var_tree)+"/rep_set.fasta")
+		print("./prinseq-lite.pl -fasta "+str(output)+"/Tree/"+str(init_var_tree)+"/rep_set.fasta -out_format 1 -out_good "+str(output)+"/Tree/"+str(init_var_tree)+"/rep_set_"+str(init_var_tree)+".good")
+		print("assign_taxonomy.py -i "+str(output)+"/Tree/"+str(init_var_tree)+"/rep_set_"+str(init_var_tree)+".good.fasta -o "+str(output)+"/Tree/"+str(init_var_tree)+"/rep_set.good."+str(init_var_tree)+".assignedTax -m rdp")
+	if args.process==1 or  args.process==3: #The analysis of the tree will be performed if we choose the complete analysis (1) or only the tree analysis (3)
+		os.system("pick_otus.py -i "+str(args.file)+" -o "+str(output)+"/Tree/"+str(init_var_tree)+"/ -m usearch61_ref -C -z -s "+str(init_var_tree)+" --threads "+threads)  #OTUs picking at the initial identity level, using usearch61 against reference. This version is necessary for large datasets, but could be changed for usearch (32 bits version) for smaller ones
+		os.system("pick_rep_set.py -i "+str(output)+"/Tree/"+str(init_var_tree)+"/"+str(file_no_fa)+" -f "+str(args.file)+" -o "+str(output)+"/Tree/"+str(init_var_tree)+"/rep_set.fasta") #At this point a representative sequence is choosen within each OTU, with default parameters
+		os.system("./prinseq-lite.pl -fasta "+str(output)+"/Tree/"+str(init_var_tree)+"/rep_set.fasta -out_format 1 -out_good "+str(output)+"/Tree/"+str(init_var_tree)+"/rep_set_"+str(init_var_tree)+".good")
+		os.system("assign_taxonomy.py -i "+             str(output)+"/Tree/"+str(init_var_tree)+"/rep_set_"+str(init_var_tree)+".good.fasta -o "+str(output)+"/Tree/"+str(init_var_tree)+"/rep_set.good."+str(init_var_tree)+".assignedTax -m rdp")
+		#os.system("parallel_assign_taxonomy_rdp.py -i "+str(output)+"/Tree/"+str(init_var_tree)+"/rep_set_"+str(init_var_tree)+".good.fasta -o "+str(output)+"/Tree/"+str(init_var_tree)+"/rep_set.good."+str(init_var_tree)+".assignedTax --poll_directly --jobs_to_start "+threads) # HAS TO BE AN ABSOLUTE PATH
+		os.system("make_otu_table.py -i "+str(output)+"/Tree/"+str(init_var_tree)+"/"+str(file_no_fa)+" -t "+str(output)+"/Tree/"+str(init_var_tree)+"/rep_set.good."+str(init_var_tree)+".assignedTax/rep_set_"+str(init_var_tree)+".good_tax_assignments.txt -o "+str(output)+"/Tree/"+str(init_var_tree)+"/All_table_"+str(init_var_tree)+".biom") #Using the taxonomy and representative OTUs file, we create here an OTU table
+		print("pick_otus.py -i "+str(args.file)+" -o "+str(output)+"/Tree/"+str(init_var_tree)+"/ -m usearch61_ref -C -z -s "+str(init_var_tree)+" --threads "+threads)  #OTUs picking at the initial identity level, using usearch61 against reference. This version is necessary for large datasets, but could be changed for usearch (32 bits version) for smaller ones
+		print("pick_rep_set.py -i "+str(output)+"/OTUs/"+str(init_var_tree)+"/"+str(file_no_fa)+" -f "+str(args.file)+" -o "+str(output)+"/Tree/"+str(init_var_tree)+"/rep_set.fasta") #At this point a representative sequence is choosen within each OTU, with default parameters
+		print("./prinseq-lite.pl -fasta "+str(output)+"/Tree/"+str(init_var_tree)+"/rep_set.fasta -out_format 1 -out_good "+str(output)+"/Tree/"+str(init_var_tree)+"/rep_set_"+str(init_var_tree)+".good")
+		# print("assign_taxonomy.py -i "+             str(output)+"/Tree/"+str(init_var_tree)+"/rep_set_"+str(init_var_tree)+".good.fasta -o "+str(output)+"/Tree/"+str(init_var_tree)+"/rep_set.good."+str(init_var_tree)+".assignedTax -m rdp")
+		print("parallel_assign_taxonomy_rdp.py -i "+str(output)+"/Tree/"+str(init_var_tree)+"/rep_set_"+str(init_var_tree)+".good.fasta -o "+str(output)+"/Tree/"+str(init_var_tree)+"/rep_set.good."+str(init_var_tree)+".assignedTax --jobs_to_start "+threads) # HAS TO BE AN ABSOLUTE PATH
+		print("make_otu_table.py -i "+str(output)+"/Tree/"+str(init_var_tree)+"/"+str(file_no_fa)+" -t "+str(output)+"/Tree/"+str(init_var_tree)+"/rep_set.good."+str(init_var_tree)+".assignedTax/rep_set_"+str(init_var_tree)+".good_tax_assignments.txt -o "+str(output)+"/Tree/"+str(init_var_tree)+"/All_table_"+str(init_var_tree)+".biom") #Using the taxonomy and representative OTUs file, we create here an OTU table
+#		os.system("assign_taxonomy.py -i "+str(output)+"/OTUs/"+str(init_var)+"/rep_set_"+str(init_var)+".good.fasta -o "+str(output)+"/OTUs/"+str(init_var)+"/rep_set.good."+str(init_var)+".assignedTax -m rdp") #Here we assign taxonomy to each OTU using rdp classifier, with default parameters
+		os.system("biom convert -i "+str(output)+"/Tree/"+str(init_var_tree)+"/All_table_"+str(init_var_tree)+".biom -o "+str(output)+"/Tree/"+str(init_var_tree)+"/table.from_biom_"+str(init_var_tree)+".txt --to-tsv --header-key taxonomy")
+		os.system("sed 's/\"//g' "+str(output)+"/Tree/"+str(init_var_tree)+"/table.from_biom_"+str(init_var_tree)+".txt > "+str(output)+"/Tree/"+str(init_var_tree)+"/table.from_biom_no_com_"+str(init_var_tree)+".txt")
 
-		os.system("Rscript --vanilla OTUs_statistics.R "+str(output)+"/OTUs/") #Finally, the R script "OTUs_statistics" perform the statistical analysis of the cores obtained within all levels
-
-		
-	if args.process==1 or  args.process==3: #The analysis of the 97_nodes tree will be performed if we choose the complete analysis (1) or only the tree analysis (3)
-		os.system("pick_otus.py -i "+str(args.file)+" -o "+str(output)+"/Tree/"+str(init_var)+"/ -m usearch61_ref -C -z -s "+str(init_var)) #OTUs picking at the initial identity level, using usearch61 against reference. This version is necessary for large datasets, but could be changed for usearch (32 bits version) for smaller ones
-		os.system("pick_rep_set.py -i "+str(output)+"/Tree/"+str(init_var)+"/"+str(file_no_fa)+" -f "+str(args.file)+" -o "+str(output)+"/Tree/"+str(init_var)+"/rep_set.fasta")
-		os.system("prinseq-lite.pl -fasta "+str(output)+"/Tree/"+str(init_var)+"/rep_set.fasta -out_format 1 -out_good "+str(output)+"/Tree/"+str(init_var)+"/rep_set_"+str(init_var)+".good")
-		os.system("assign_taxonomy.py -i "+str(output)+"/Tree/"+str(init_var)+"/rep_set_"+str(init_var)+".good.fasta -o "+str(output)+"/Tree/"+str(init_var)+"/rep_set.good."+str(init_var)+".assignedTax -m rdp")
-		os.system("make_otu_table.py -i "+str(output)+"/Tree/"+str(init_var)+"/"+str(file_no_fa)+" -t "+str(output)+"/Tree/"+str(init_var)+"/rep_set.good."+str(init_var)+".assignedTax/rep_set_"+str(init_var)+".good_tax_assignments.txt -o "+str(output)+"/Tree/"+str(init_var)+"/All_table_"+str(init_var)+".biom")
-		os.system("biom convert -i "+str(output)+"/Tree/"+str(init_var)+"/All_table_"+str(init_var)+".biom -o "+str(output)+"/Tree/"+str(init_var)+"/table.from_biom_"+str(init_var)+".txt --to-tsv --header-key taxonomy")
-		os.system("sed 's/\"//g' ./"+str(output)+"/Tree/"+str(init_var)+"/table.from_biom_"+str(init_var)+".txt > ./"+str(output)+"/Tree/"+str(init_var)+"/table.from_biom_no_com_"+str(init_var)+".txt")
-
-		par_a="./97_otus_nodes.tree"
-		par_b="./"+str(output)+"/Tree/"+str(init_var)+"/table.from_biom_no_com_"+str(init_var)+".txt"
-		par_c="./"+str(output)+"/Tree/results.txt"
+		par_a=str(tree_l_name)
+		par_b=str(output)+"/Tree/"+str(init_var_tree)+"/table.from_biom_no_com_"+str(init_var_tree)+".txt"
+		par_c=str(output)+"/Tree/results.txt"
 		par_d=args.analtype
-		par_e="./"+str(output)+"/Tree/abundances.txt"
+		par_e=str(output)+"/Tree/abundances.txt"
 		Tree_analysis(par_a,par_b,par_c,par_d,par_e) #The "Tree analysis" module is used to perform th search of the core Nodes thorugh the tree using the OTUs abundances obtained with the otu picking against reference.
 	
-		output_file=open("./"+str(output)+"/Tree/"+str(init_var)+"/"+str(file_no_fa)+".modified.txt", 'w')
+		output_file=open(str(output)+"/Tree/"+str(init_var_tree)+"/"+str(file_no_fa)+".modified.txt", 'w')
 
-		for line in open("./"+str(output)+"/Tree/"+str(init_var)+"/"+str(file_no_fa), 'r'):
+		for line in open(str(output)+"/Tree/"+str(init_var_tree)+"/"+str(file_no_fa), 'r'):
 			line = line.rstrip()
 			line_info=line.split('\t')
 			output_file.write(str(line_info[0])+'\t')
 			for x in range (1,len(line_info)):
 				output_file.write(str(line_info[x])+";")
 			output_file.write("\n")
-		
-		os.system("perl Distances_16S.pl ./"+str(output)+"/Tree/")
+
+		print("perl Distances_16S.pl "+str(output)+"/Tree/ "+threads)		
+		os.system("perl Distances_16S.pl "+str(output)+"/Tree/ "+threads)
 		
 	if args.process==1 or  args.process==4: #This option is included to perform the Venn analysis using the results obtained with OTUs and Tree functions
 		os.system("Rscript --vanilla Venn_OTUS_Tree.R "+str(output))
@@ -182,7 +207,7 @@ def Tree_analysis(tree,tabla,out,analysis_type,out2):
 	###Al subsequents variables could be modified
 	binomial_value = float(0.05) #Default value for the option 2 of the core evaluation method for the tree
 	p_value = float(0.05) #p-value threeshold for the binomial method (2 method) 
-	percentage = float(0.9) #Minimun percentage threeshold of subjects requiered to defined a core 
+	percentage = float(1) #Minimun percentage threeshold of subjects requiered to defined a core 
 	taxo_p = float(0.9) #Minimun percentage of the same taxonomic group within all OTUs contained into the same Node
 	
 	output_file=open(out, 'w')
@@ -247,8 +272,8 @@ def Tree_analysis(tree,tabla,out,analysis_type,out2):
 	if(analysis_type==1 or analysis_type==2 or analysis_type==3): #Here we evaluate the tree traversally using one of the choosen methods: 100% core, binomial or percentage
 		for node in tree.traverse("postorder"):
 		
-			tot_cont=np.count_nonzero(node.vector) #Count the number ob subjects in this study with one ore more ocurrence in the vector for a certain node 
-			tot_cont2=np.asarray(node.vector).size #Count the total vector array size
+			tot_cont=float(np.count_nonzero(node.vector)) #Count the number ob subjects in this study with one ore more ocurrence in the vector for a certain node 
+			tot_cont2=float(np.asarray(node.vector).size) #Count the total vector array size
 			a=stats.binom_test(tot_cont, n=tot_cont2, p=binomial_value, alternative='greater') #Binomial test that uses the binomial_value
 			rela=(tot_cont/tot_cont2)
 			
@@ -400,4 +425,3 @@ def nodes_eval(node,tree,output_file,table2,taxo_p,total_saved_leaves):
 if __name__ == "__main__":
 
 	main()
-
