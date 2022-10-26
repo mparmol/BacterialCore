@@ -1,4 +1,7 @@
-rom ete3 import Tree #ete3 is a library needed to transverse a tree object
+## Está silenciada la paralelización de assign_taxonomy porque no sé juntar los outputs
+## Mejor usar launch_tomateHERE que launch_tomate.
+
+from ete3 import Tree #ete3 is a library needed to transverse a tree object
 import numpy as np
 from scipy import stats
 import argparse
@@ -19,7 +22,7 @@ def main():
 	parser.add_argument('-final_level', dest = 'flvl', type = float, default = 0.74, choices=[Range(0.5, 1.0)], required = False, help = "Last aggregation level to measure") #Las identity level to use in pick_otus
 	parser.add_argument('-tree_type_analysis', dest = 'analtype', type = int, default = 1, required = False, choices=[1,2,3,4], help = "'1: Core 100. 2: Binomial. 3: Min Percentage. 4: Print all nodes'") #Way to evaluate core levels while trasversing the 97_nodes tree
 	parser.add_argument('-tree_level', dest = 'tree_l', type = int, default = 97, required = False, choices=(97, 99), help = "97: 97_otus_nodes.tree, 99: 99_otus_nodes.tree. Default: 97") #Choice which level
-	parser.add_argument('-min_core_percentage', dest = 'min_core', type = float, default = 1, required = False, choices=[Range(0.5, 1.0)], help = "Minimun percetage of samples to describe a core") #Here we can change the "1" (100%) value for another percentage
+	parser.add_argument('-min_core_percentage', dest = 'min_core', type = float, default = 1, required = False, choices=[Range(0.5, 1.0)], help = "Minimum percentage of samples to describe a core") #Here we can change the "1" (100%) value for another percentage
 	parser.add_argument('-threads', dest = 'threads', type = int, default = 1, required = False, help = "For paralellization of all parallelizable steps")
 	
 	args = parser.parse_args()
@@ -47,8 +50,8 @@ def main():
 		os.system("pick_otus.py -i "+str(args.file)+" -o "+str(output)+"/OTUs/"+str(init_var)+"/ -m usearch61 -z -s "+str(init_var)+" --threads "+threads) #Denovo OTUs picking at the initial identity level, using usearch61. This version is necessary for large datasets, but could be changed for usearch (32 bits version) for smaller ones
 		os.system("pick_rep_set.py -i "+str(output)+"/OTUs/"+str(init_var)+"/"+str(file_no_fa)+" -f "+str(args.file)+" -o "+str(output)+"/OTUs/"+str(init_var)+"/rep_set.fasta") #At this point a representative sequence is choosen within each OTU, with default parameters
 		os.system("./prinseq-lite.pl -fasta "+str(output)+"/OTUs/"+str(init_var)+"/rep_set.fasta -out_format 1 -out_good "+str(output)+"/OTUs/"+str(init_var)+"/rep_set_"+str(init_var)+".good") #We need prinseq in order to chage the format of the multifasta, to avoid sequence import problems with the next steps
-#		os.system("assign_taxonomy.py -i "+str(output)+"/OTUs/"+str(init_var)+"/rep_set_"+str(init_var)+".good.fasta -o "+str(output)+"/OTUs/"+str(init_var)+"/rep_set.good."+str(init_var)+".assignedTax -m rdp") #Here we assign taxonomy to each OTU using rdp classifier, with default parameters
-		os.system("parallel_assign_taxonomy_rdp.py -i "+str(output)+"/OTUs/"+str(init_var)+"/rep_set_"+str(init_var)+".good.fasta -o "+str(output)+"/OTUs/"+str(init_var)+"/rep_set.good."+str(init_var)+".assignedTax --jobs_to_start "+threads) # HAS TO BE AN ABSOLUTE PATH
+		os.system("assign_taxonomy.py -i "+str(output)+"/OTUs/"+str(init_var)+"/rep_set_"+str(init_var)+".good.fasta -o "+str(output)+"/OTUs/"+str(init_var)+"/rep_set.good."+str(init_var)+".assignedTax -m rdp") #Here we assign taxonomy to each OTU using rdp classifier, with default parameters
+#		os.system("parallel_assign_taxonomy_rdp.py -i "+str(output)+"/OTUs/"+str(init_var)+"/rep_set_"+str(init_var)+".good.fasta -o "+str(output)+"/OTUs/"+str(init_var)+"/rep_set.good."+str(init_var)+".assignedTax --jobs_to_start "+threads) # HAS TO BE AN ABSOLUTE PATH
 		os.system("make_otu_table.py -i "+str(output)+"/OTUs/"+str(init_var)+"/"+str(file_no_fa)+" -t "+str(output)+"/OTUs/"+str(init_var)+"/rep_set.good."+str(init_var)+".assignedTax/rep_set_"+str(init_var)+".good_tax_assignments.txt -o "+str(output)+"/OTUs/"+str(init_var)+"/All_table_"+str(init_var)+".biom") #Using the taxonomy and representative OTUs file, we create here an OTU table
 		os.system("biom convert -i "+str(output)+"/OTUs/"+str(init_var)+"/All_table_"+str(init_var)+".biom -o "+str(output)+"/OTUs/"+str(init_var)+"/table.from_biom_"+str(init_var)+".txt --to-tsv --header-key taxonomy") #This is an extra step to generate an OTU table as .txt, in case we need it for other to check the results at this point
 		os.system("compute_core_microbiome.py -i "+str(output)+"/OTUs/"+str(init_var)+"/All_table_"+str(init_var)+".biom -o "+str(output)+"/OTUs/"+str(init_var)+"/All_table_normKO_core"+str(int(compute_core*100))+" --min_fraction_for_core "+str(compute_core)+" --max_fraction_for_core "+str(compute_core)) #Here we compute the core microbiome
@@ -153,7 +156,7 @@ def main():
 		par_c=str(output)+"/Tree/results.txt"
 		par_d=args.analtype
 		par_e=str(output)+"/Tree/abundances.txt"
-		Tree_analysis(par_a,par_b,par_c,par_d,par_e) #The "Tree analysis" module is used to perform th search of the core Nodes thorugh the tree using the OTUs abundances obtained with the otu picking against reference.
+		Tree_analysis(par_a,par_b,par_c,par_d,par_e,compute_core) #The "Tree analysis" module is used to perform th search of the core Nodes thorugh the tree using the OTUs abundances obtained with the otu picking against reference.
 	
 		output_file=open(str(output)+"/Tree/"+str(init_var_tree)+"/"+str(file_no_fa)+".modified.txt", 'w')
 
@@ -165,8 +168,8 @@ def main():
 				output_file.write(str(line_info[x])+";")
 			output_file.write("\n")
 
-		print("perl Distances_16S.pl "+str(output)+"/Tree/ "+threads)		
-		os.system("perl Distances_16S.pl "+str(output)+"/Tree/ "+threads)
+		print("perl Distances_16S.pl "+str(output)+"/Tree/ "+str(tree_l)+" "+threads)		
+		os.system("perl Distances_16S.pl "+str(output)+"/Tree/ "+str(tree_l)+" "+threads)
 		
 	if args.process==1 or  args.process==4: #This option is included to perform the Venn analysis using the results obtained with OTUs and Tree functions
 		os.system("Rscript --vanilla Venn_OTUS_Tree.R "+str(output))
@@ -202,12 +205,12 @@ def CoreFilt_b(s,w,o):
 			if not A & seqs:
 				print >> fout, l
 
-def Tree_analysis(tree,tabla,out,analysis_type,out2):  
+def Tree_analysis(tree,tabla,out,analysis_type,out2,compute_core):  
 
 	###Al subsequents variables could be modified
 	binomial_value = float(0.05) #Default value for the option 2 of the core evaluation method for the tree
 	p_value = float(0.05) #p-value threeshold for the binomial method (2 method) 
-	percentage = float(1) #Minimun percentage threeshold of subjects requiered to defined a core 
+	percentage = float(compute_core) #Minimun percentage threeshold of subjects requiered to defined a core 
 	taxo_p = float(0.9) #Minimun percentage of the same taxonomic group within all OTUs contained into the same Node
 	
 	output_file=open(out, 'w')
