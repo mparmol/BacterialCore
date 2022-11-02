@@ -1,8 +1,21 @@
-## Está silenciada la paralelización de assign_taxonomy porque no sé juntar los outputs
-## Mejor usar launch_tomateHERE que launch_tomate.
+# ETE implements the three most common strategies: preorder, levelorder and postorder.
+# 
+#     preorder: 1)Visit the root, 2) Traverse the left subtree , 3) Traverse the right subtree.
+#     postorder: 1) Traverse the left subtree , 2) Traverse the right subtree, 3) Visit the root
+#     levelorder (default): every node on a level before is visited going to a lower level
+# 
+# Note
+# 
+#     Preorder traversal sequence: F, B, A, D, C, E, G, I, H (root, left, right)
+#     Inorder traversal sequence: A, B, C, D, E, F, G, H, I (left, root, right); note how this produces a sorted sequence
+#     Postorder traversal sequence: A, C, E, D, B, H, I, G, F (left, right, root)
+#     Level-order traversal sequence: F, B, G, A, D, I, C, E, H
+# analtype=3; cutoff=0.01; file='/home/silviatm/micro/bc/tomate_subset.fa'; final_lim=0.74; ilvl=0.99; compute_core=1.0; output='/home/silviatm/micro/bc/tomate_bc_0.01/'; process=3; taxo_p=0.9; threads=16; tree_l=99
+# file_no_fa=os.path.basename(str(file.split(".")[0]))+"_otus.txt" ; tree_l_name="99_otus_nodes.tree" ; init_var_tree=0.99
 
 from ete3 import Tree #ete3 is a library needed to transverse a tree object
 import numpy as np
+import pandas as pd # new dependency...
 from scipy import stats
 import argparse
 import os
@@ -23,6 +36,8 @@ def main():
 	parser.add_argument('-tree_type_analysis', dest = 'analtype', type = int, default = 1, required = False, choices=[1,2,3,4], help = "'1: Core 100. 2: Binomial. 3: Min Percentage. 4: Print all nodes'") #Way to evaluate core levels while trasversing the 97_nodes tree
 	parser.add_argument('-tree_level', dest = 'tree_l', type = int, default = 97, required = False, choices=(97, 99), help = "97: 97_otus_nodes.tree, 99: 99_otus_nodes.tree. Default: 97") #Choice which level
 	parser.add_argument('-min_core_percentage', dest = 'min_core', type = float, default = 1, required = False, choices=[Range(0.5, 1.0)], help = "Minimum percentage of samples to describe a core") #Here we can change the "1" (100%) value for another percentage
+	parser.add_argument('-cutoff', dest = 'cutoff', type = float, default = 0, required = False, choices=[Range(0, 0.99)], help = "Minimum relative abundance needed to consider a PCG to be 'present' in one sample (Tree approach, process==3). Default: 0")
+	parser.add_argument('-taxo_p', dest = 'taxo_p', type = float, default = 0.9, required = False, choices=[Range(0.5, 1.0)],	help = "minimum percentage of the same taxonomic group within all OTUs contained into the same Node") #Here we can change the "1" (100%) value for another percentage
 	parser.add_argument('-threads', dest = 'threads', type = int, default = 1, required = False, help = "For paralellization of all parallelizable steps")
 	
 	args = parser.parse_args()
@@ -42,6 +57,8 @@ def main():
 		tree_l_name="99_otus_nodes.tree"
 		init_var_tree=0.99
 	compute_core=args.min_core
+	cutoff=args.cutoff
+	taxo_p=args.taxo_p
 	threads = str(args.threads)
 	
 	file_no_fa=os.path.basename(str(args.file.split(".")[0]))+"_otus.txt" #Create a variable that has the variable name summed to the sufix _otus.txt, to permit pick_rep_set finde the file generated from pick_otus
@@ -135,19 +152,18 @@ def main():
 		print("./prinseq-lite.pl -fasta "+str(output)+"/Tree/"+str(init_var_tree)+"/rep_set.fasta -out_format 1 -out_good "+str(output)+"/Tree/"+str(init_var_tree)+"/rep_set_"+str(init_var_tree)+".good")
 		print("assign_taxonomy.py -i "+str(output)+"/Tree/"+str(init_var_tree)+"/rep_set_"+str(init_var_tree)+".good.fasta -o "+str(output)+"/Tree/"+str(init_var_tree)+"/rep_set.good."+str(init_var_tree)+".assignedTax -m rdp")
 	if args.process==1 or  args.process==3: #The analysis of the tree will be performed if we choose the complete analysis (1) or only the tree analysis (3)
-		os.system("pick_otus.py -i "+str(args.file)+" -o "+str(output)+"/Tree/"+str(init_var_tree)+"/ -m usearch61_ref -C -z -s "+str(init_var_tree)+" --threads "+threads)  #OTUs picking at the initial identity level, using usearch61 against reference. This version is necessary for large datasets, but could be changed for usearch (32 bits version) for smaller ones
-		os.system("pick_rep_set.py -i "+str(output)+"/Tree/"+str(init_var_tree)+"/"+str(file_no_fa)+" -f "+str(args.file)+" -o "+str(output)+"/Tree/"+str(init_var_tree)+"/rep_set.fasta") #At this point a representative sequence is choosen within each OTU, with default parameters
-		os.system("./prinseq-lite.pl -fasta "+str(output)+"/Tree/"+str(init_var_tree)+"/rep_set.fasta -out_format 1 -out_good "+str(output)+"/Tree/"+str(init_var_tree)+"/rep_set_"+str(init_var_tree)+".good")
-		os.system("assign_taxonomy.py -i "+             str(output)+"/Tree/"+str(init_var_tree)+"/rep_set_"+str(init_var_tree)+".good.fasta -o "+str(output)+"/Tree/"+str(init_var_tree)+"/rep_set.good."+str(init_var_tree)+".assignedTax -m rdp")
-		#os.system("parallel_assign_taxonomy_rdp.py -i "+str(output)+"/Tree/"+str(init_var_tree)+"/rep_set_"+str(init_var_tree)+".good.fasta -o "+str(output)+"/Tree/"+str(init_var_tree)+"/rep_set.good."+str(init_var_tree)+".assignedTax --poll_directly --jobs_to_start "+threads) # HAS TO BE AN ABSOLUTE PATH
-		os.system("make_otu_table.py -i "+str(output)+"/Tree/"+str(init_var_tree)+"/"+str(file_no_fa)+" -t "+str(output)+"/Tree/"+str(init_var_tree)+"/rep_set.good."+str(init_var_tree)+".assignedTax/rep_set_"+str(init_var_tree)+".good_tax_assignments.txt -o "+str(output)+"/Tree/"+str(init_var_tree)+"/All_table_"+str(init_var_tree)+".biom") #Using the taxonomy and representative OTUs file, we create here an OTU table
+#		os.system("pick_otus.py -i "+str(args.file)+" -o "+str(output)+"/Tree/"+str(init_var_tree)+"/ -m usearch61_ref -C -z -s "+str(init_var_tree)+" --threads "+threads)  #OTUs picking at the initial identity level, using usearch61 against reference. This version is necessary for large datasets, but could be changed for usearch (32 bits version) for smaller ones
+#		os.system("pick_rep_set.py -i "+str(output)+"/Tree/"+str(init_var_tree)+"/"+str(file_no_fa)+" -f "+str(args.file)+" -o "+str(output)+"/Tree/"+str(init_var_tree)+"/rep_set.fasta") #At this point a representative sequence is choosen within each OTU, with default parameters
+#		os.system("./prinseq-lite.pl -fasta "+str(output)+"/Tree/"+str(init_var_tree)+"/rep_set.fasta -out_format 1 -out_good "+str(output)+"/Tree/"+str(init_var_tree)+"/rep_set_"+str(init_var_tree)+".good")
+#		os.system("assign_taxonomy.py -i "+str(output)+"/Tree/"+str(init_var_tree)+"/rep_set_"+str(init_var_tree)+".good.fasta -o "+str(output)+"/Tree/"+str(init_var_tree)+"/rep_set.good."+str(init_var_tree)+".assignedTax -m rdp")
+##		os.system("parallel_assign_taxonomy_rdp.py -i "+str(output)+"/Tree/"+str(init_var_tree)+"/rep_set_"+str(init_var_tree)+".good.fasta -o "+str(output)+"/Tree/"+str(init_var_tree)+"/rep_set.good."+str(init_var_tree)+".assignedTax --poll_directly --jobs_to_start "+threads) # HAS TO BE AN ABSOLUTE PATH
+#		os.system("make_otu_table.py -i "+str(output)+"/Tree/"+str(init_var_tree)+"/"+str(file_no_fa)+" -t "+str(output)+"/Tree/"+str(init_var_tree)+"/rep_set.good."+str(init_var_tree)+".assignedTax/rep_set_"+str(init_var_tree)+".good_tax_assignments.txt -o "+str(output)+"/Tree/"+str(init_var_tree)+"/All_table_"+str(init_var_tree)+".biom") #Using the taxonomy and representative OTUs file, we create here an OTU table
 		print("pick_otus.py -i "+str(args.file)+" -o "+str(output)+"/Tree/"+str(init_var_tree)+"/ -m usearch61_ref -C -z -s "+str(init_var_tree)+" --threads "+threads)  #OTUs picking at the initial identity level, using usearch61 against reference. This version is necessary for large datasets, but could be changed for usearch (32 bits version) for smaller ones
 		print("pick_rep_set.py -i "+str(output)+"/OTUs/"+str(init_var_tree)+"/"+str(file_no_fa)+" -f "+str(args.file)+" -o "+str(output)+"/Tree/"+str(init_var_tree)+"/rep_set.fasta") #At this point a representative sequence is choosen within each OTU, with default parameters
 		print("./prinseq-lite.pl -fasta "+str(output)+"/Tree/"+str(init_var_tree)+"/rep_set.fasta -out_format 1 -out_good "+str(output)+"/Tree/"+str(init_var_tree)+"/rep_set_"+str(init_var_tree)+".good")
 		# print("assign_taxonomy.py -i "+             str(output)+"/Tree/"+str(init_var_tree)+"/rep_set_"+str(init_var_tree)+".good.fasta -o "+str(output)+"/Tree/"+str(init_var_tree)+"/rep_set.good."+str(init_var_tree)+".assignedTax -m rdp")
-		print("parallel_assign_taxonomy_rdp.py -i "+str(output)+"/Tree/"+str(init_var_tree)+"/rep_set_"+str(init_var_tree)+".good.fasta -o "+str(output)+"/Tree/"+str(init_var_tree)+"/rep_set.good."+str(init_var_tree)+".assignedTax --jobs_to_start "+threads) # HAS TO BE AN ABSOLUTE PATH
+##		print("parallel_assign_taxonomy_rdp.py -i "+str(output)+"/Tree/"+str(init_var_tree)+"/rep_set_"+str(init_var_tree)+".good.fasta -o "+str(output)+"/Tree/"+str(init_var_tree)+"/rep_set.good."+str(init_var_tree)+".assignedTax --jobs_to_start "+threads) # HAS TO BE AN ABSOLUTE PATH
 		print("make_otu_table.py -i "+str(output)+"/Tree/"+str(init_var_tree)+"/"+str(file_no_fa)+" -t "+str(output)+"/Tree/"+str(init_var_tree)+"/rep_set.good."+str(init_var_tree)+".assignedTax/rep_set_"+str(init_var_tree)+".good_tax_assignments.txt -o "+str(output)+"/Tree/"+str(init_var_tree)+"/All_table_"+str(init_var_tree)+".biom") #Using the taxonomy and representative OTUs file, we create here an OTU table
-#		os.system("assign_taxonomy.py -i "+str(output)+"/OTUs/"+str(init_var)+"/rep_set_"+str(init_var)+".good.fasta -o "+str(output)+"/OTUs/"+str(init_var)+"/rep_set.good."+str(init_var)+".assignedTax -m rdp") #Here we assign taxonomy to each OTU using rdp classifier, with default parameters
 		os.system("biom convert -i "+str(output)+"/Tree/"+str(init_var_tree)+"/All_table_"+str(init_var_tree)+".biom -o "+str(output)+"/Tree/"+str(init_var_tree)+"/table.from_biom_"+str(init_var_tree)+".txt --to-tsv --header-key taxonomy")
 		os.system("sed 's/\"//g' "+str(output)+"/Tree/"+str(init_var_tree)+"/table.from_biom_"+str(init_var_tree)+".txt > "+str(output)+"/Tree/"+str(init_var_tree)+"/table.from_biom_no_com_"+str(init_var_tree)+".txt")
 
@@ -156,7 +172,7 @@ def main():
 		par_c=str(output)+"/Tree/results.txt"
 		par_d=args.analtype
 		par_e=str(output)+"/Tree/abundances.txt"
-		Tree_analysis(par_a,par_b,par_c,par_d,par_e,compute_core) #The "Tree analysis" module is used to perform th search of the core Nodes thorugh the tree using the OTUs abundances obtained with the otu picking against reference.
+		Tree_analysis(par_a,par_b,par_c,par_d,par_e,compute_core,cutoff,taxo_p) #The "Tree analysis" module is used to perform th search of the core Nodes thorugh the tree using the OTUs abundances obtained with the otu picking against reference.
 	
 		output_file=open(str(output)+"/Tree/"+str(init_var_tree)+"/"+str(file_no_fa)+".modified.txt", 'w')
 
@@ -205,38 +221,62 @@ def CoreFilt_b(s,w,o):
 			if not A & seqs:
 				print >> fout, l
 
-def Tree_analysis(tree,tabla,out,analysis_type,out2,compute_core):  
+def Tree_analysis(tree,tabla,out,analysis_type,out2,compute_core=1,cutoff=0,taxo_p=0.9):  
 
 	###Al subsequents variables could be modified
 	binomial_value = float(0.05) #Default value for the option 2 of the core evaluation method for the tree
 	p_value = float(0.05) #p-value threeshold for the binomial method (2 method) 
-	percentage = float(compute_core) #Minimun percentage threeshold of subjects requiered to defined a core 
-	taxo_p = float(0.9) #Minimun percentage of the same taxonomic group within all OTUs contained into the same Node
+	percentage = float(compute_core) #minimum percentage threeshold of subjects requiered to defined a core
+	cutoff = float(cutoff) #minimum relative abundance needed to consider a PCG to be 'present' in one sample
+	taxo_p = float(taxo_p) #minimum percentage of the same taxonomic group within all OTUs contained into the same Node
 	
 	output_file=open(out, 'w')
 	output_file_2=open(out2, 'w')	
 
-	tree = Tree(tree, quoted_node_names=True, format=1) #Here we load the 97_otus tree
-	table = {}
-	cont = 1
-	for line in open(tabla):
-		if (line.startswith('#')):
-			output_file_2.write(str(line))
-		else:
-			fields = list(map(str.strip, line.split('\t'))) #We create a dictionary with all the keys and values of the OTU table against reference
-			table[fields[0]] = list(map(float, fields[1:-1]))
+	tree = Tree(tree, quoted_node_names=True, format=1) #Here we load the 97_otus/99_otus tree
+	table  = {} ## abund
+	table2 = {} ## tax
 	
-	table2 = {}
-	
-	for line in open(tabla):
-		if (line.startswith('#')):
-			continue
-		else:
-			fields2 = list(map(str.strip, line.split('\t'))) #Here we load a dictionary with the taxonomy information from the picked OTUs
-			table2[fields2[0]] = list(map(str, fields2[(len(fields2)-1):len(fields2)]))
+	if cutoff > 0: # Apply cutoff if needed; we'll need a temporary relative abundance table; reads whole table at once because we need columns
+		df=pd.read_csv(tabla, delimiter="\t", skiprows=1).iloc[:,1:-1]
+		normalized_df=df[df.columns] / df[df.columns].sum()
+		np.savetxt(tabla+"_temp", normalized_df, fmt="%.6f",delimiter='\t', header="#\n#")
+
+		with open(tabla) as t, open(tabla+"_temp") as temp:
+		  for x, y in zip(t, temp):
+		    if (x.startswith('#')):
+					output_file_2.write(str(x))
+				else:
+				  ## Abund:
+					fields = list(map(str.strip, x.split('\t'))) #We create a dictionary with all the keys and values of the OTU table against reference
+					table[fields[0]] = list(map(float, fields[1:-1]))
+					
+					fieldstemp = list(map(str.strip, y.split('\t')))
+					temptable = list(map(float, fieldstemp))
+					
+					table[fields[0]] = [i if v>cutoff else 0.0 for (i, v) in zip(table[fields[0]], temptable)]
+					
+					## Tax:
+					fields2 = fields #Here we load a dictionary with the taxonomy information from the picked OTUs
+					table2[fields2[0]] = list(map(str, fields2[(len(fields2)-1):len(fields2)]))
+					
+		system("rm "+tabla+"_temp")
+
+	else:
+		for line in open(tabla):
+			if (line.startswith('#')):
+				output_file_2.write(str(line))
+			else:
+				##Abund:
+				fields = list(map(str.strip, line.split('\t')))
+				table[fields[0]] = list(map(float, fields[1:-1]))
+				
+				## Tax:
+				fields2 = fields #Here we load a dictionary with the taxonomy information from the picked OTUs
+				table2[fields2[0]] = list(map(str, fields2[(len(fields2)-1):len(fields2)]))
 	
 	table_final_res = [0] * len(fields[1:-1])
-	table_final_res = ([float(i) for i in table_final_res])
+	table_final_res = ([float(i) for i in table_final_res]) # the cutoff won't have altered the values in the result table.
 	sum_abun_rela = 0
 	cores = 0
 	
@@ -249,9 +289,8 @@ def Tree_analysis(tree,tabla,out,analysis_type,out2,compute_core):
 	node2content = tree.get_cached_content()
 
 	flag=0
-	for node in tree.traverse(): #This loop is used to add values into de vectors created before
+	for node in tree.traverse(): #This loop is used to add values into the vectors created before
 		if not node.is_leaf():
-
 			leaf_vectors = np.array([leaf.vector for leaf in node2content[node] if leaf.vector is not None])
 			node.vector = leaf_vectors.sum(axis=0)
 		
@@ -268,14 +307,13 @@ def Tree_analysis(tree,tabla,out,analysis_type,out2,compute_core):
 			print (node.name, node.vector)
 			output_file.write(node.name + '\t' + str(node.vector) + '\n')
 
-	if(analysis_type!=4):
+	if(analysis_type==1 or analysis_type==2 or analysis_type==3): #Here we evaluate the tree traversally using the chosen method: 100% core, binomial or percentage
+
 		output_file.write("Core" + '\t' + "Prevalence" + '\t' + "Abundance" + '\t' + "Relative abundances" + '\t' + "Min" + '\t' + "Max" + '\t' + "Average" + '\t' + "SD" + '\t' + "Leaves" + '\t' + "Taxonomy" + '\t' + "Leaves number" + '\n') 
-	
-	
-	if(analysis_type==1 or analysis_type==2 or analysis_type==3): #Here we evaluate the tree traversally using one of the choosen methods: 100% core, binomial or percentage
+
 		for node in tree.traverse("postorder"):
 		
-			tot_cont=float(np.count_nonzero(node.vector)) #Count the number ob subjects in this study with one ore more ocurrence in the vector for a certain node 
+			tot_cont=float(np.count_nonzero(node.vector)) #Count the number of subjects in this study with one ore more ocurrence in the vector for a certain node 
 			tot_cont2=float(np.asarray(node.vector).size) #Count the total vector array size
 			a=stats.binom_test(tot_cont, n=tot_cont2, p=binomial_value, alternative='greater') #Binomial test that uses the binomial_value
 			rela=(tot_cont/tot_cont2)
@@ -301,7 +339,7 @@ def Tree_analysis(tree,tabla,out,analysis_type,out2,compute_core):
 				
 				output_file.write(node.name + '\t' +  str(rela) + '\t' + str(node.vector) + '\t' + str(abundance) + '\t' + str(min(abundance)) + '\t' + str(max(abundance)) + '\t' + str(mean_abun) + '\t' + str(std_abun) + '\t')
 								
-				conteo_hojas=nodes_eval(node,tree,output_file,table2,taxo_p,total_saved_leaves) #With this line we can assign a taxonomy to each node based in the taxonomy of each OTU, dependig on the minimun taxonomy percentage level stablished before 
+				conteo_hojas=nodes_eval(node,tree,output_file,table2,taxo_p,total_saved_leaves) #With this line we can assign a taxonomy to each node based in the taxonomy of each OTU, dependig on the minimum taxonomy percentage level stablished before 
 				
 				output_file.write(str(conteo_hojas) + '\n') #Print the total number of leaves of this node
 				
@@ -335,7 +373,7 @@ def nodes_eval(node,tree,output_file,table2,taxo_p,total_saved_leaves):
 	total_leaves = list(node2content[node])
 	
 	cont_leaves=0 #Counter of the total number of leaves of the node
-	dicc_tax = {} #This dicctionary will keep the information of the number of OTUs that have a certain taxonomy group assigned
+	dicc_tax = {} #This dictionary will keep the information of the number of OTUs that have a certain taxonomy group assigned
 
 	for node_im in total_leaves[0:(len(total_leaves))]:
 			
@@ -413,7 +451,7 @@ def nodes_eval(node,tree,output_file,table2,taxo_p,total_saved_leaves):
 			
 	array_letters = ['k','p','c','o','f','g','s']
 	
-	for item_letters in array_letters: #at this point, we evalue, in order from kingdom to specie, if each taxonomic range is greater than the minimun percentage stablished. If it is greater, then then most abundante range will be printed. If not, the loop would finish indicating only the taxonomic ranges that passed the stablished threeshold
+	for item_letters in array_letters: #at this point, we evalue, in order from kingdom to species, if each taxonomic range is greater than the minimum percentage stablished. If it is greater, then then most abundante range will be printed. If not, the loop would finish indicating only the taxonomic ranges that passed the stablished threeshold
 	
 		for keys,values in taxa_final.items():
 			
