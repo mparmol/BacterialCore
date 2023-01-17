@@ -147,10 +147,10 @@ def main():
 		os.system("cat "+str(output)+"/OTUs/filtrar*.txt > "+str(output)+"/OTUs/filt.txt") #Core reads filtered after each evaluated levels are concatenated into a single file
 		os.system("rm -rf "+str(output)+"/OTUs/filtrar*.txt")
 		os.system("Rscript --vanilla OTUs_statistics.R "+str(output)+"/OTUs/ "+str(init_var)) #Finally, the R script "OTUs_statistics" perform the statistical analysis of the cores obtained within all levels
-		print("pick_otus.py -i "+str(args.file)+" -o "+str(output)+"/Tree/"+str(init_var_tree)+"/ -m usearch61_ref -C -z -s "+str(init_var_tree)) #OTUs picking at the initial identity level, using u$
-		print("pick_rep_set.py -i "+str(output)+"/Tree/"+str(init_var_tree)+"/"+str(file_no_fa)+" -f "+str(args.file)+" -o "+str(output)+"/Tree/"+str(init_var_tree)+"/rep_set.fasta")
-		print("./prinseq-lite.pl -fasta "+str(output)+"/Tree/"+str(init_var_tree)+"/rep_set.fasta -out_format 1 -out_good "+str(output)+"/Tree/"+str(init_var_tree)+"/rep_set_"+str(init_var_tree)+".good")
-		print("assign_taxonomy.py -i "+str(output)+"/Tree/"+str(init_var_tree)+"/rep_set_"+str(init_var_tree)+".good.fasta -o "+str(output)+"/Tree/"+str(init_var_tree)+"/rep_set.good."+str(init_var_tree)+".assignedTax -m rdp")
+#		print("pick_otus.py -i "+str(args.file)+" -o "+str(output)+"/Tree/"+str(init_var_tree)+"/ -m usearch61_ref -C -z -s "+str(init_var_tree)) #OTUs picking at the initial identity level, using u$
+#		print("pick_rep_set.py -i "+str(output)+"/Tree/"+str(init_var_tree)+"/"+str(file_no_fa)+" -f "+str(args.file)+" -o "+str(output)+"/Tree/"+str(init_var_tree)+"/rep_set.fasta")
+#		print("./prinseq-lite.pl -fasta "+str(output)+"/Tree/"+str(init_var_tree)+"/rep_set.fasta -out_format 1 -out_good "+str(output)+"/Tree/"+str(init_var_tree)+"/rep_set_"+str(init_var_tree)+".good")
+#		print("assign_taxonomy.py -i "+str(output)+"/Tree/"+str(init_var_tree)+"/rep_set_"+str(init_var_tree)+".good.fasta -o "+str(output)+"/Tree/"+str(init_var_tree)+"/rep_set.good."+str(init_var_tree)+".assignedTax -m rdp")
 	if args.process==1 or  args.process==3: #The analysis of the tree will be performed if we choose the complete analysis (1) or only the tree analysis (3)
 #
 		os.system("pick_otus.py -i "+str(args.file)+" -o "+str(output)+"/Tree/"+str(init_var_tree)+"/ -m usearch61_ref -C -z -s "+str(init_var_tree)+" --threads "+threads)  #OTUs picking at the initial identity level, using usearch61 against reference. This version is necessary for large datasets, but could be changed for usearch (32 bits version) for smaller ones
@@ -159,13 +159,6 @@ def main():
 		os.system("assign_taxonomy.py -i "+str(output)+"/Tree/"+str(init_var_tree)+"/rep_set_"+str(init_var_tree)+".good.fasta -o "+str(output)+"/Tree/"+str(init_var_tree)+"/rep_set.good."+str(init_var_tree)+".assignedTax -m rdp")
 #		os.system("parallel_assign_taxonomy_rdp.py -i "+str(output)+"/Tree/"+str(init_var_tree)+"/rep_set_"+str(init_var_tree)+".good.fasta -o "+str(output)+"/Tree/"+str(init_var_tree)+"/rep_set.good."+str(init_var_tree)+".assignedTax --poll_directly --jobs_to_start "+threads) # HAS TO BE AN ABSOLUTE PATH
 		os.system("make_otu_table.py -i "+str(output)+"/Tree/"+str(init_var_tree)+"/"+str(file_no_fa)+" -t "+str(output)+"/Tree/"+str(init_var_tree)+"/rep_set.good."+str(init_var_tree)+".assignedTax/rep_set_"+str(init_var_tree)+".good_tax_assignments.txt -o "+str(output)+"/Tree/"+str(init_var_tree)+"/All_table_"+str(init_var_tree)+".biom") #Using the taxonomy and representative OTUs file, we create here an OTU table
-#
-		print("pick_otus.py -i "+str(args.file)+" -o "+str(output)+"/Tree/"+str(init_var_tree)+"/ -m usearch61_ref -C -z -s "+str(init_var_tree)+" --threads "+threads)  #OTUs picking at the initial identity level, using usearch61 against reference. This version is necessary for large datasets, but could be changed for usearch (32 bits version) for smaller ones
-		print("pick_rep_set.py -i "+str(output)+"/OTUs/"+str(init_var_tree)+"/"+str(file_no_fa)+" -f "+str(args.file)+" -o "+str(output)+"/Tree/"+str(init_var_tree)+"/rep_set.fasta") #At this point a representative sequence is choosen within each OTU, with default parameters
-		print("./prinseq-lite.pl -fasta "+str(output)+"/Tree/"+str(init_var_tree)+"/rep_set.fasta -out_format 1 -out_good "+str(output)+"/Tree/"+str(init_var_tree)+"/rep_set_"+str(init_var_tree)+".good")
-		# print("assign_taxonomy.py -i "+             str(output)+"/Tree/"+str(init_var_tree)+"/rep_set_"+str(init_var_tree)+".good.fasta -o "+str(output)+"/Tree/"+str(init_var_tree)+"/rep_set.good."+str(init_var_tree)+".assignedTax -m rdp")
-##		print("parallel_assign_taxonomy_rdp.py -i "+str(output)+"/Tree/"+str(init_var_tree)+"/rep_set_"+str(init_var_tree)+".good.fasta -o "+str(output)+"/Tree/"+str(init_var_tree)+"/rep_set.good."+str(init_var_tree)+".assignedTax --jobs_to_start "+threads) # HAS TO BE AN ABSOLUTE PATH
-		print("make_otu_table.py -i "+str(output)+"/Tree/"+str(init_var_tree)+"/"+str(file_no_fa)+" -t "+str(output)+"/Tree/"+str(init_var_tree)+"/rep_set.good."+str(init_var_tree)+".assignedTax/rep_set_"+str(init_var_tree)+".good_tax_assignments.txt -o "+str(output)+"/Tree/"+str(init_var_tree)+"/All_table_"+str(init_var_tree)+".biom") #Using the taxonomy and representative OTUs file, we create here an OTU table
 		os.system("biom convert -i "+str(output)+"/Tree/"+str(init_var_tree)+"/All_table_"+str(init_var_tree)+".biom -o "+str(output)+"/Tree/"+str(init_var_tree)+"/table.from_biom_"+str(init_var_tree)+".txt --to-tsv --header-key taxonomy")
 		os.system("sed 's/\"//g' "+str(output)+"/Tree/"+str(init_var_tree)+"/table.from_biom_"+str(init_var_tree)+".txt > "+str(output)+"/Tree/"+str(init_var_tree)+"/table.from_biom_no_com_"+str(init_var_tree)+".txt")
 
@@ -186,7 +179,6 @@ def main():
 				output_file.write(str(line_info[x])+";")
 			output_file.write("\n")
 
-		print("perl Distances_16S.pl "+str(output)+"/Tree/ "+str(tree_l)+" "+threads)		
 		os.system("perl Distances_16S.pl "+str(output)+"/Tree/ "+str(tree_l)+" "+threads)
 		
 	if args.process==1 or  args.process==4: #This option is included to perform the Venn analysis using the results obtained with OTUs and Tree functions
@@ -237,43 +229,20 @@ def Tree_analysis(tree,tabla,out,analysis_type,out2,compute_core=1,cutoff=0,taxo
 
 	tree = Tree(tree, quoted_node_names=True, format=1) #Here we load the 97_otus/99_otus tree
 	table     = {} ## abund
-	table_rel = {} ## abund rel
 	table2    = {} ## tax
 	
-	if cutoff > 0: # Apply cutoff if needed; we'll need a temporary relative abundance table; reads whole table at once because we need columns
-		df=pd.read_csv(tabla, delimiter="\t", skiprows=1).iloc[:,1:-1]
-		normalized_df=df[df.columns] / df[df.columns].sum()
-		np.savetxt(tabla+"_temp", normalized_df, fmt="%.6f",delimiter='\t', header="#\n#")
+	for line in open(tabla):
+		if (line.startswith('#')):
+			output_file_2.write(str(line))
+		else:
+	  		## Abund:
+			fields = list(map(str.strip, line.split('\t'))) #We create a dictionary with all the keys and values of the OTU table against reference
+			table[fields[0]] = list(map(float, fields[1:-1]))
+			
+			## Tax:
+			table2[fields[0]] = list(map(str, fields[(len(fields)-1):len(fields)])) # Here we load a dictionary with the taxonomy information from the picked OTUs
 
-		with open(tabla) as t, open(tabla+"_temp") as temp:
-			for x, y in zip(t, temp):
-				if (x.startswith('#')):
-					output_file_2.write(str(x))
-				else:
-			  		## Abund:
-					fields = list(map(str.strip, x.split('\t'))) #We create a dictionary with all the keys and values of the OTU table against reference
-					table[fields[0]] = list(map(float, fields[1:-1]))
-					
-					fieldstemp = list(map(str.strip, y.split('\t')))
-					table_rel[fields[0]] = list(map(float, fieldstemp))
 
-					## Tax:
-					table2[fields[0]] = list(map(str, fields[(len(fields)-1):len(fields)])) # Here we load a dictionary with the taxonomy information from the picked OTUs
-
-		os.system("rm "+tabla+"_temp")
-
-	else:
-		for line in open(tabla):
-			if (line.startswith('#')):
-				output_file_2.write(str(line))
-			else:
-				##Abund:
-				fields = list(map(str.strip, line.split('\t')))
-				table[fields[0]] = list(map(float, fields[1:-1]))
-				
-				## Tax:
-				table2[fields[0]] = list(map(str, fields[(len(fields)-1):len(fields)])) #Here we load a dictionary with the taxonomy information from the picked OTUs
-	
 	table_final_res = [0] * len(fields[1:-1]) # empty; it's as long as samples there are. Will contain the info from the last line of results.txt
 	table_final_res = ([float(i) for i in table_final_res])
 	sum_abun_rela = 0
@@ -284,24 +253,20 @@ def Tree_analysis(tree,tabla,out,analysis_type,out2,compute_core=1,cutoff=0,taxo
 			leaf.vector = None
 		else:
 			leaf.vector = table[leaf.name] # [rows/OTUs from abs abund table] Create value vectors for each of the tree tips of the tree with the values of the OTU table previously generated
+
 	node2content = tree.get_cached_content()
 
 	flag=0
 	for node in tree.traverse(): #This loop is used to add values into the vectors created before
-		if not node.is_leaf():
-			leaf_vectors_rel = np.array([table_rel[leaf.name] for leaf in node2content[node] if leaf.vector is not None])
+		if not node.is_leaf(): # if it's a leaf, it already has a .vector attribute.
 			leaf_vectors     = np.array([leaf.vector for leaf in node2content[node] if leaf.vector is not None])
-			node.vector      = np.array(leaf_vectors.sum(axis=0)) # sum all the abundances of all leaves from that node
+			node.vector      = leaf_vectors.sum(axis=0) # sum all the abundances of all leaves from that node
 			
-			if(flag == 0): # TODO I save this before applying the cutoff filter. Because this is to compute the relative abundance + we don't want divisions by zero. Still not sure if it's correct, but apparently the first node of the loop is equivalent to "all nodes", so it must be.
-		  	save_node1=node.vector
-  			total_saved_leaves = np.array([leaf.name for leaf in node2content[node]])
+			if(flag == 0): # when flag==0, we're looking at the root. that means adding ALL leaves of the tree.
+			  	save_node1=node.vector
+	  			total_saved_leaves = np.array([leaf.name for leaf in node2content[node]])
+		  		flag=1			
 
-	  		flag=1
-	 		
-			if cutoff>0: # Apply cutoff: a node won't be considered present at a given sample if the total abundance of its leaves is smaller than the cutoff
-			  node.vector[leaf_vectors_rel.sum(axis=0) < cutoff] = 0.0
-	
 	if(analysis_type==4): #This method only prints the information of the tree, only for information of the tree purpouse
 		print(tree.get_ascii(show_internal=True))
 		output_file.write(tree.get_ascii(show_internal=True) + '\n' + '\n')
@@ -314,14 +279,29 @@ def Tree_analysis(tree,tabla,out,analysis_type,out2,compute_core=1,cutoff=0,taxo
 		output_file.write("Core" + '\t' + "Prevalence" + '\t' + "Abundance" + '\t' + "Relative abundances" + '\t' + "Min" + '\t' + "Max" + '\t' + "Average" + '\t' + "SD" + '\t' + "Leaves" + '\t' + "Taxonomy" + '\t' + "Leaves number" + '\n') 
 
 		for node in tree.traverse("postorder"):
+			if type(node.vector) == list: # empty node.vectors are not filterable but we want them to be checked...
+				node.vector=([float(i) for i in node.vector]) #Transform all the values contained in node.vector to float, to perform operations efficiently 
+				abundance=node.vector/save_node1 #Relative abundance of each subject in the node over the terminal node (sum of all nodes)
+				abundance =([float(i) for i in abundance])
+				abundance=node.vector/save_node1 #Relative abundance of each subject in the node over the terminal node (sum of all nodes)
+			else:
+				continue
+
+			filtered_n_vector=[] # Apply cutoff: a node won't be considered present at a given sample if the total abundance of its leaves is smaller than the cutoff
+			for i, v in zip(node.vector, abundance):
+				if v < cutoff:
+					filtered_n_vector.append(0.0)
+				else:
+					filtered_n_vector.append(i)
 		
-			tot_cont=float(np.count_nonzero(node.vector)) #Count the number of subjects (samples) in this study with one ore more ocurrence in the vector for a certain node 
-			tot_cont2=float(np.asarray(node.vector).size) #Count the total vector array size
-			a=stats.binom_test(tot_cont, n=tot_cont2, p=binomial_value, alternative='greater') #Binomial test that uses the binomial_value
+			tot_cont=float(np.count_nonzero(filtered_n_vector)) #Count the number of subjects (samples) in this study with one ore more ocurrence in the vector for a certain node 
+			tot_cont2=float(np.asarray(filtered_n_vector).size) #Count the total vector array size
+			
+			if analysis_type==2:
+				a=stats.binom_test(tot_cont, n=tot_cont2, p=binomial_value, alternative='greater') #Binomial test that uses the binomial_value
 			rela=(tot_cont/tot_cont2) # percentage of samples in which the node is present
 			
-			if(analysis_type==1 and np.all(node.vector) or (analysis_type==2 and a <= p_value) or (analysis_type==3 and rela >= percentage)): #Depending on the method used to go through the tree, we will evaluate different parameters to check if the node should be or not taken into account
-				
+			if((analysis_type==1 and np.all(node.vector)) or (analysis_type==2 and a <= p_value) or (analysis_type==3 and rela >= percentage)): #Depending on the method used to go through the tree, we will evaluate different parameters to check if the node should be or not taken into account
 				node.vector=([float(i) for i in node.vector]) #Transform all the values contained in node.vector to float, to perform operations efficiently 
 				abundance=node.vector/save_node1 #Relative abundance of each subject in the node over the terminal node (sum of all nodes)
 				abundance =([float(i) for i in abundance])
@@ -336,8 +316,7 @@ def Tree_analysis(tree,tabla,out,analysis_type,out2,compute_core=1,cutoff=0,taxo
 				
 				output_file_2.write(str(node.name) + '\t')
 				for x in range(len(abundance)): 
-					output_file_2.write(str(abundance[x]) + '\t'),
-				output_file_2.write('\n')
+					output_file_2.write(str(abundance[x]) + '\t'), output_file_2.write('\n')
 				
 				output_file.write(node.name + '\t' +  str(rela) + '\t' + str(node.vector) + '\t' + str(abundance) + '\t' + str(min(abundance)) + '\t' + str(max(abundance)) + '\t' + str(mean_abun) + '\t' + str(std_abun) + '\t')
 								
@@ -345,7 +324,7 @@ def Tree_analysis(tree,tabla,out,analysis_type,out2,compute_core=1,cutoff=0,taxo
 				
 				output_file.write(str(conteo_hojas) + '\n') #Print the total number of leaves of this node
 				
-				tree=erase_node(node, tree) #Once a node has been evaluated, this line erase that node from the tree to simplify the calculations of the next nodes
+				tree=erase_node(node, tree) #Once a node has been evaluated, this line deletes that node from the tree to simplify the calculations of the next nodes
 			
 				G = tree.search_nodes(name=node.name)[0]
 				removed_node = G.detach()
@@ -468,4 +447,6 @@ def nodes_eval(node,tree,output_file,table2,taxo_p,total_saved_leaves):
 if __name__ == "__main__":
 
 	main()
+
+
 
