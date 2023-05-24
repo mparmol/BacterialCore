@@ -1,5 +1,4 @@
-## READ ME 
-
+## README 
 
 #### BacterialCore: tool for detection of PCGs from compositional data
 
@@ -13,9 +12,9 @@ The installation of Python2.7 (https://www.python.org/downloads/), Qiime (http:/
 ### Input
 The files needed are the 16S sequences to be analyzed in multifasta format and the 16S phylogenetic tree and aligned reference sequences (here 97_otus_nodes.tree/99_otus_nodes.tree and 97_otus.fasta/99_otus.fasta from Greengenes gg_13_5 https://greengenes.secondgenome.com/?prefix=downloads/greengenes_database/gg_13_5/). These files should be in the same folder where the script is executed.
 
-The datasets should be rarefied to the minimun read depth in the dataset, after removing low quality reads.
+The datasets should be rarefied to the minimum read depth in the dataset, after removing low quality reads.
 
-The tree file and aligned reference sequences file need to be the same version as the one loaded by pick_outs.py
+The tree file and aligned reference sequences file need to be the same version as the one loaded by pick_otus.py
 
 The node names of the trees should be modified, and a genuine name should be given for all. This could be done for example using R with the function "makeNodeLabel" from "ape" package. 
 
@@ -36,7 +35,7 @@ Reported nodes, leaf information (names, average distance,...) relate only to le
 	1. Complete pipeline; Detection of non-overlapping OTUs present in 100% of the samples, followed by the detection of nodes in the phylogenetic tree present in 100% of the samples. Finally this script will perform a Venn diagram to look for the shared core reads that exists between the OTUs and Tree approaches.
 	2. Only detection of non-overlapping OTUs present in 100% of the samples. 
 	3. Only detection of nodes present in 100% of the samples. 
-	4. Only venn diagram to look for the shared core reads that exists between the OTUs and Tree approaches previously generated.
+	4. Only Venn diagram to look for the shared core reads that exists between the OTUs and Tree approaches previously generated.
 
 - Initial clustering threshold with pick_otus; -initial_level #This is the first clustering threshold that will be performed by pick_otus (default 0.97).
 
@@ -51,17 +50,17 @@ Reported nodes, leaf information (names, average distance,...) relate only to le
 - Tree type analysis; -tree_type_analysis #Core detection can be evaluated using three different methods and a last option to only see the abundance of each leaf and node (default 1; possible values 1-4). 
 	1. All samples must have at least one read mapping to the leaf or node.
 	2. Binomial analysis ('binomial_value' and 'p_value' are both set to 0.05 by default, but can be modified within the script)
-	3. Custom percentage. 'percentage' can modify the custom percentage needed to considered a leaf or node as core (to be modified within the script. deafualt is 0.9).
+	3. Custom percentage. 'percentage' can modify the custom percentage needed to considered a leaf or node as core (to be modified within the script. default is 0.9).
 	4. Show tree info, structure and abundances.
 		
-- Finally, the parameter 'taxo_p' can be modified within the script to establish the minimun support to define the consensus taxonomy of that node (default 0.80).
+- Finally, the parameter 'taxo_p' can be modified within the script to establish the minimum support to define the consensus taxonomy of that node (default 0.80).
 
 ### Output files
 
 The possible output files depending on the parameters used are:
 
 - OTUs (folder):
-	- Statistics.txt: Total number, pooled mean abundance, standard deviation, minimun and maximun of core groups for all clustering thresholds. 
+	- Statistics.txt: Total number, pooled mean abundance, standard deviation, minimum and maximum of core groups for all clustering thresholds. 
 	- General.txt: Number of core OTUs per clustering thresholds.
 	- filt.txt: Reads belonging to core OTUs.
 	- Distr.txt: Frequency mean, Frequency standard deviation, Frequency CV, ecdf-mean and ecdf-CV for each core at each clustering level. (ecdf: rank of the value when compared to all OTUs at the same clustering thresholds)
@@ -70,7 +69,7 @@ The possible output files depending on the parameters used are:
 	
 - Tree (folder):
 	- abundances.txt: Sample abundance table for each core node/leaf.
-	- results.txt: Core name, absolute abundances (vector), relative abundances (vector), min relative abundance, max relative abundance, average relative abundance, SD relative abundance, consensuns taxonomy, number of leaves. 
-	- results_stats.txt: Number of leaves, mean 16S distance between leaves, estandard deviation of 16S distances between leaves, and max 16S distance between leaves, for each node and leaf core.
+	- results.txt: Core name, absolute abundances (vector), relative abundances (vector), min relative abundance, max relative abundance, average relative abundance, SD relative abundance, consensus taxonomy, number of leaves. 
+	- results_stats.txt: Number of leaves, mean 16S distance between leaves, standard deviation of 16S distances between leaves, and max 16S distance between leaves, for each node and leaf core.
 
 - Venn diagram in .png format

@@ -10,18 +10,16 @@
 #     Inorder traversal sequence: A, B, C, D, E, F, G, H, I (left, root, right); note how this produces a sorted sequence
 #     Postorder traversal sequence: A, C, E, D, B, H, I, G, F (left, right, root)
 #     Level-order traversal sequence: F, B, G, A, D, I, C, E, H
-# analtype=3; cutoff=0.01; file='/home/silviatm/micro/bc/tomate_subset.fa'; final_lim=0.74; ilvl=0.99; compute_core=1.0; output='/home/silviatm/micro/bc/tomate_bc_0.01/'; process=3; taxo_p=0.9; threads=16; tree_l=99
-# file_no_fa=os.path.basename(str(file.split(".")[0]))+"_otus.txt" ; tree_l_name="99_otus_nodes.tree" ; init_var_tree=0.99
 
 from ete3 import Tree #ete3 is a library needed to transverse a tree object
 import numpy as np
-import pandas as pd # new dependency...
+import pandas as pd
 from scipy import stats
 import argparse
 import os
 import fileinput
 
-def main():  
+def main():
   ##########################################################################################
 	#--Argument
 	parser = argparse.ArgumentParser(description="")
@@ -39,7 +37,6 @@ def main():
 	parser.add_argument('-cutoff', dest = 'cutoff', type = float, default = 0, required = False, choices=[Range(0.0, 1.0)], help = "Minimum relative abundance needed to consider a node to be 'present' in one sample (Tree approach, process==3). Default: 0")
 	parser.add_argument('-taxo_p', dest = 'taxo_p', type = float, default = 0.9, required = False, choices=[Range(0.5, 1.0)],	help = "minimum percentage of the same taxonomic group within all OTUs contained into the same Node") #Here we can change the "1" (100%) value for another percentage
 	parser.add_argument('-threads', dest = 'threads', type = int, default = 1, required = False, help = "For paralellization of all parallelizable steps")
-	
 	args = parser.parse_args()
   ##########################################################################################
 
@@ -98,7 +95,7 @@ def main():
 				output_file.write(str(line_info[x])+";")
 			output_file.write("\n")
 
-		for x in np.arange (init_var-0.01,final_lim,-0.01): #With this for loop we permorf exactly the same as before between the initial and final levels desired, with the particularity that we avoid to evaluate reads that have been already part of a core in a last aggregation level
+		for x in np.arange (init_var-0.01,final_lim,-0.01): #With this for loop we perform exactly the same as before between the initial and final levels desired, with the particularity that we avoid to evaluate reads that have been already part of a core in a last aggregation level
 			x=round(x,2)
 			os.system("pick_otus.py -i "+str(output)+"/OTUs/"+str(last_var)+"/rep_set_"+str(last_var)+".good.fasta -o "+str(output)+"/OTUs/"+str(x)+"/ -m usearch61 -z -s "+str(x))
 			os.system("merge_otu_maps.py -i "+str(output)+"/OTUs/"+str(last_var)+"/rep_set_"+str(last_var)+".good_otus.txt,"+str(output)+"/OTUs/"+str(x)+"/rep_set_"+str(last_var)+".good_otus.txt -o "+str(output)+"/OTUs/"+str(x)+"/otus"+str(x)+".txt")
@@ -115,7 +112,7 @@ def main():
 			par_a=str(output)+"/OTUs/filt.txt"
 			par_b=str(output)+"/OTUs/"+str(x)+"/rep_set_"+str(x)+".good_otus.txt"
 			par_c=str(output)+"/OTUs/"+str(x)+"/otus"+str(x)+".Filt.txt"
-			CoreFilt_b(par_a,par_b,par_c) #Here we ommit reads that already have been part of a core
+			CoreFilt_b(par_a,par_b,par_c) #Here we omit reads that already have been part of a core
 			os.system("make_otu_table.py -i "+str(output)+"/OTUs/"+str(x)+"/otus"+str(x)+".Filt.txt -t "+str(output)+"/OTUs/"+str(x)+"/rep_set.good."+str(x)+".assignedTax/rep_set_"+str(x)+".good_tax_assignments.txt -o "+str(output)+"/OTUs/"+str(x)+"/"+str(x)+".Filt_table.biom")
 			os.system("compute_core_microbiome.py -i "+str(output)+"/OTUs/"+str(x)+"/"+str(x)+".Filt_table.biom -o "+str(output)+"/OTUs/"+str(x)+"/coreFilt."+str(x)+" --num_fraction_for_core_steps 2 --min_fraction_for_core "+str(compute_core)+" --max_fraction_for_core "+str(compute_core))
 			os.system("biom convert -i "+str(output)+"/OTUs/"+str(x)+"/coreFilt."+str(x)+"/core_table_"+str(int(compute_core*100))+".biom -o "+str(output)+"/OTUs/"+str(x)+"/coreFilt."+str(x)+"/"+str(x)+".biom --to-json")
@@ -167,7 +164,7 @@ def main():
 		par_c=str(output)+"/Tree/results.txt"
 		par_d=args.analtype
 		par_e=str(output)+"/Tree/abundances.txt"
-		Tree_analysis(par_a,par_b,par_c,par_d,par_e,compute_core,cutoff,taxo_p) #The "Tree analysis" module is used to perform th search of the core Nodes thorugh the tree using the OTUs abundances obtained with the otu picking against reference.
+		Tree_analysis(par_a,par_b,par_c,par_d,par_e,compute_core,cutoff,taxo_p) #The "Tree analysis" module is used to perform the search of the core Nodes thorugh the tree using the OTUs abundances obtained with the otu picking against reference.
 	
 		output_file=open(str(output)+"/Tree/"+str(init_var_tree)+"/"+str(file_no_fa)+".modified.txt", 'w')
 
@@ -217,7 +214,7 @@ def CoreFilt_b(s,w,o):
 
 def Tree_analysis(tree,tabla,out,analysis_type,out2,compute_core=1,cutoff=0,taxo_p=0.9):  
 
-	###Al subsequents variables could be modified
+	###All subsequents variables could be modified
 	binomial_value = float(0.05) #Default value for the option 2 of the core evaluation method for the tree
 	p_value = float(0.05) #p-value threeshold for the binomial method (2 method) 
 	percentage = float(compute_core) #minimum percentage threeshold of subjects requiered to defined a core
@@ -432,7 +429,7 @@ def nodes_eval(node,tree,output_file,table2,taxo_p,total_saved_leaves):
 			
 	array_letters = ['k','p','c','o','f','g','s']
 	
-	for item_letters in array_letters: #at this point, we evalue, in order from kingdom to species, if each taxonomic range is greater than the minimum percentage stablished. If it is greater, then then most abundante range will be printed. If not, the loop would finish indicating only the taxonomic ranges that passed the stablished threeshold
+	for item_letters in array_letters: #at this point, we evaluate, in order from kingdom to species, if each taxonomic range is greater than the minimum percentage stablished. If it is greater, then then most abundante range will be printed. If not, the loop would finish indicating only the taxonomic ranges that passed the stablished threeshold
 	
 		for keys,values in taxa_final.items():
 			
@@ -447,6 +444,4 @@ def nodes_eval(node,tree,output_file,table2,taxo_p,total_saved_leaves):
 if __name__ == "__main__":
 
 	main()
-
-
 
